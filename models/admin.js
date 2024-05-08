@@ -1,8 +1,7 @@
 const pool = require('../config/database')
 const Sequelize = require('sequelize');
-const group = require('./Group');
 
-var teacher = pool.define('teacher', {
+var admin = pool.define('admin', {
     // Here are the columns of the table
     id:{
         primaryKey: true,
@@ -27,15 +26,7 @@ var teacher = pool.define('teacher', {
         defaultValue: true
 
     },
-    status: {
-        type: Sequelize.STRING,
-        defaultValue: 'requested'
-    },
     verified: {
-        type: Sequelize.BOOLEAN,
-        defaultValue: false
-    },
-    banned: {
         type: Sequelize.BOOLEAN,
         defaultValue: false
     },
@@ -44,6 +35,10 @@ var teacher = pool.define('teacher', {
     },
     random_pass_code: {
         type: Sequelize.TEXT,
+        defaultValue: ''
+    },
+    birthDate: {
+        type: Sequelize.STRING,
         defaultValue: ''
     },
     phoneNumber: {
@@ -68,12 +63,9 @@ var teacher = pool.define('teacher', {
     },
 })
 
-teacher.sync().then(function() {
+admin.sync().then(function() {
     console.log('DB connection successful.');
   }).catch(err=> {console.log('error has occured', err)});
 
 
-teacher.hasMany(group, { as: 'groups', foreignKey: 'teacherId' });
-group.belongsTo(teacher, { as: 'teacher', foreignKey: 'teacherId' });
-
-module.exports = teacher;
+module.exports = admin;

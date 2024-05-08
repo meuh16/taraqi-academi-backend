@@ -1,5 +1,5 @@
 const pool = require('../config/database')
-const Sequelize = require('sequelize')
+const Sequelize = require('sequelize');
 
 var group = pool.define('group', {
     // Here are the columns of the table
@@ -9,6 +9,9 @@ var group = pool.define('group', {
         defaultValue: Sequelize.DataTypes.UUIDV4
     },
     teacherId:{
+        type: Sequelize.DataTypes.UUID,
+    },
+    studyProgramId:{
         type: Sequelize.DataTypes.UUID,
     },
     name: {
@@ -21,6 +24,6 @@ var group = pool.define('group', {
 
 group.sync().then(function() {
     console.log('DB connection successful.');
-  }).catch(err=> {console.log('error has occured', err)});;
+}).catch(err=> {console.log('error has occured', err)})
 
 module.exports = group;

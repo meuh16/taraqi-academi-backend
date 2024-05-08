@@ -11,14 +11,19 @@ const Path = require('path');
 
 const Student = require('../models/student')
 const Notification = require('../models/notifications')
-const Answer = require('../models/answer')
+// const Answer = require('../models/answer')
 const Exam = require('../models/exam')
 const Group = require('../models/group')
-const Question = require('../models/question')
+// const Question = require('../models/question')
 const StudyProgram = require('../models/studyProgram')
 const Teacher = require('../models/teacher');
 const studentStudyProgram = require('../models/studentStudyProgram');
 const Subscription = require('../models/subscription');
+const StudentExam = require('../models/StudentExam');
+const StudentGroup = require('../models/StudentGroup');
+const groupExam = require('../models/groupExam');
+const exam = require('../models/exam');
+const student = require('../models/student');
 
 
 
@@ -43,7 +48,7 @@ module.exports.register = async (req, res) => {
         errors.push({field: 'birthDate', message: 'تاريخ الميلاد مطلوب'})
       }
 
-      if(phoneNumber & phoneNumber.length > 0){
+      if(phoneNumber && phoneNumber.length > 0){
         if(country == 'الجزائر'){
           if(phone('+213' + phoneNumber).isValid){
             // good
@@ -1512,5 +1517,311 @@ module.exports.getDemoData = async (req, res) => {
   } catch (error) {
     console.log(error)
     res.send(error)
+  }
+}
+
+module.exports.getExams = async (req, res) => {
+  try {
+    const myStudent = await student.findOne({
+      where:{
+        id: req.id
+      },
+      include: [{ model: exam, through: StudentExam }]
+    })
+    var myStudentExams = []
+
+    if(myStudent && myStudent.exams){
+      for (let i = 0; i < myStudent.exams.length; i++) {
+        const exam = myStudent.exams[i];
+        const studentExam = await StudentExam.findOne({
+          where:{
+            examId: exam.id,
+            studentId: req.id
+          }
+        })
+        if(studentExam){
+          var currentDate = new Date();
+          var differenceMs = currentDate - studentExam.createdAt;
+          // Convert milliseconds to minutes
+          var differenceMinutes = Math.floor(differenceMs / (1000 * 60));
+          if(studentExam.status == 'finish' || differenceMinutes > exam.time ){
+            myStudentExams.push({id: studentExam.id, title: exam.title, totalNote: exam.note, startExam: exam.startExam, endExam: exam.endExam, date: studentExam.createdAt, note: studentExam.noteStatus == 'corrected' ? studentExam.note : '--', answers: studentExam.answers, status: studentExam.status, type: exam.type})
+          }
+        }
+      }
+    }
+
+    const studentGroup = await StudentGroup.findOne({
+      where:{
+        studentId : req.id
+      }
+    })
+    var exams = []
+    if(studentGroup){
+      exams = await Exam.findAll({
+        where: {
+          endExam: {
+            [Op.gt]: new Date() // Using Sequelize's greater than operator
+          }
+        },
+        include: [{
+          model: Group,
+          where: {
+            id: studentGroup.groupId // Filter exams by the group ID
+          },
+          through: 'GroupExam' // Assuming your through model is named GroupExam
+        }]
+      });
+    }
+    var data = []
+    for (let i = 0; i < exams.length; i++) {
+      const examItem = exams[i];
+      const exist = await StudentExam.findOne({
+        where:{
+          studentId: req.id,
+          examId: examItem.id
+        }
+      })
+      if(exist){
+        if(exist.status && exist.status == 'start'){
+          data.push({id: examItem.id, title: examItem.title, description: examItem.description, startExam: examItem.startExam, endExam: examItem.endExam, time: examItem.time, type: examItem.type, status: 'started' })
+        }
+      }else{
+        data.push({id: examItem.id, title: examItem.title, description: examItem.description, startExam: examItem.startExam, endExam: examItem.endExam, time: examItem.time, type: examItem.type, status: 'notStarted' })
+      }
+    }
+    res.status(200).send({response: 'done', studentExams: myStudentExams, exams: data}) 
+  } catch (error) {
+    console.log(error)
+    res.status(400).send({response: 'server_error', message: 'خطأ داخلي في الخادم، حاول مرة أخرى لاحقاً'}) 
+  }
+}
+
+module.exports.enterExam = async (req, res) => {
+  try {
+    console.log(req.body)
+    const examId = req.body.examId
+    const exam = await Exam.findOne({
+      where:{
+        id: examId
+      }
+    })
+    if(exam){
+      console.log('exam found')
+      const studentExam = await StudentExam.findOne({
+        where:{
+          examId: examId,
+          studentId: req.id
+        }
+      })
+      if(studentExam){
+        if(studentExam.status == 'finish'){
+          // cannot access
+          res.status(200).send({response: 'not-allowed', message: 'تم إجراء هذا الامتحان '}) 
+
+        }else{
+          var currentDate = new Date()
+          console.log(exam.endExam)
+          console.log(currentDate)
+          if(currentDate < new Date(exam.endExam)){
+            var differenceMs = currentDate - studentExam.createdAt;
+            // Convert milliseconds to minutes
+            var differenceMinutes = Math.floor(differenceMs / (1000 * 60));
+            if(differenceMinutes < exam.time){
+              // access
+              res.status(200).send({response: 'done', exam: exam.id}) 
+            }else{
+              // cannot access time end
+              res.status(200).send({response: 'not-allowed', message: 'انتهى الوقت المسموح به للامتحان'}) 
+            }
+          }else{
+            // cannot access exam date end
+            res.status(200).send({response: 'not-allowed', message: 'انتهى التاريخ المسموح به للامتحان'}) 
+          }
+        }
+      }else{
+
+        var currentDate = new Date()
+        if(currentDate < new Date(exam.startExam)){
+          // cannot access not availble yet
+          res.status(200).send({response: 'not-allowed', message: 'الامتحان غير متاح الآن'}) 
+
+        }else{
+          if(currentDate > new Date(exam.endExam)){
+            // cannot access too late
+            res.status(200).send({response: 'not-allowed', message: 'انتهى التاريخ المسموح به للامتحان'}) 
+
+          }else{
+            var data = []
+            var questions = exam.questions ? JSON.parse(exam.questions) : [] 
+            for (let i = 0; i < questions.length; i++) {
+              const question = questions[i];
+              for (let j = 0; j < question.options.length; j++) {
+                const option = question.options[j];
+                question.options[j].answer = false
+              }
+              if(question.type == 'text'){
+                data.push({question: question.question, type: question.type, answer: '', point: question.point, note: '--' })
+              }else{
+                data.push({question: question.question, type: question.type, options: question.options, point: question.point, note: '0' })
+              }
+            }
+
+            const newStudentExam = await StudentExam.create({
+              status : 'start',
+              note: '',
+              noteStatus: 'notCorrected',
+              answers: JSON.stringify(data),
+              studentId: req.id,
+              examId
+            })
+            res.status(200).send({response: 'done', exam: exam.id}) 
+          }
+        }
+      }
+    }else{
+      // there is no exam
+      res.status(200).send({response: 'not-allowed', message: 'لا يوجد امتحان '}) 
+    }
+  } catch (error) {
+    console.log(error)
+    res.status(400).send({response: 'server_error', message: 'خطأ داخلي في الخادم، حاول مرة أخرى لاحقاً'}) 
+  }
+}
+
+module.exports.getExam = async (req, res) => {
+  try {
+    console.log(req.body)
+    const examId = req.body.examId
+    const exam = await Exam.findOne({
+      where:{
+        id: examId
+      },
+    })
+    if(exam){
+      console.log('exam found')
+      console.log()
+      const studentExam = await StudentExam.findOne({
+        where:{
+          examId: examId,
+          studentId: req.id
+        }
+      })
+      if(studentExam){
+        if(studentExam.status == 'finish'){
+          // cannot access
+          res.status(200).send({response: 'not-allowed', message: 'تم إجراء هذا الامتحان '}) 
+        }else{
+          var currentDate = new Date()
+          if(currentDate < new Date(exam.endExam)){
+            var differenceMs = currentDate - studentExam.createdAt;
+            // Convert milliseconds to minutes
+            var differenceMinutes = Math.floor(differenceMs / (1000 * 60));
+            console.log(currentDate)
+            console.log(exam.createdAt)
+            console.log(differenceMs)
+            console.log(differenceMinutes)
+
+            if(differenceMinutes < exam.time){
+              // access
+              const myExam = await Exam.findOne({
+                where:{
+                  id: examId
+                },
+                attributes:['id','title','description','startExam','endExam','time','type','note','instructions']
+              })
+              res.status(200).send({response: 'done', exam: studentExam, examInfo: myExam}) 
+            }else{
+              // cannot access time end
+              res.status(200).send({response: 'not-allowed', message: 'انتهى الوقت المسموح به للامتحان'}) 
+            }
+          }else{
+            // cannot access exam date end
+            res.status(200).send({response: 'not-allowed', message: 'انتهى التاريخ المسموح به للامتحان'}) 
+          }
+        }
+      }else{
+          res.status(200).send({response: 'not-allowed', message: 'لا يوجد امتحان '})   
+      }
+    }else{
+      // there is no exam
+      res.status(200).send({response: 'not-allowed', message: 'لا يوجد امتحان '}) 
+    }
+  } catch (error) {
+    console.log(error)
+    res.status(400).send({response: 'server_error', message: 'خطأ داخلي في الخادم، حاول مرة أخرى لاحقاً'}) 
+  }
+}
+
+module.exports.saveExam = async (req, res) => {
+  try {
+    console.log(req.body)
+    const {studentExamId, answers} = req.body
+    const studentExam = await StudentExam.findOne({
+      where:{
+        id: studentExamId
+      }
+    })
+    if(studentExam){
+      //console.log(studentExam)
+      const exam = await Exam.findOne({
+        where: {
+          id: studentExam.examId
+        }
+      })
+      if(exam){
+        // console.log(exam)
+        var data = exam.questions && exam.questions.length > 0 ? JSON.parse(exam.questions) : []
+        var examNoteStatus = 'corrected'
+        var examNote = 0
+        console.log('data : ' , data )
+        for (let i = 0; i < data.length; i++) {
+          const question = data[i];
+          if(question.type == 'options'){
+            var note = 0
+            var selection = 0
+            if(answers[i]){
+              for (let j = 0; j < answers[i].options.length; j++) {
+                const answer = answers[i].options[j];
+                if(answer.answer == question.options[j].answer && question.options[j].answer == true ){
+                  note = note + Number(question.point)
+                }
+              }
+            }
+            if(note > 0){
+              examNote = examNote + note 
+              answers[i].note = note
+            }
+
+          }else{
+            examNoteStatus = 'notCorrected'
+          }
+        }
+        await studentExam.update({
+          answers: JSON.stringify(answers),
+          status: 'finish',
+          note: examNote,
+          noteStatus: examNoteStatus
+        })
+        res.status(200).send({response: 'done', message: 'تم حفظ الامتحان '}) 
+      }else{
+        res.status(400).send({response: 'server_error', message: 'الامتحان غير موجود'}) 
+      }
+    }else{
+      res.status(400).send({response: 'server_error', message: 'الامتحان غير موجود'}) 
+    }
+  } catch (error) {
+    console.log(error)
+    res.status(400).send({response: 'server_error', message: 'خطأ داخلي في الخادم، حاول مرة أخرى لاحقاً'}) 
+  }
+}
+
+
+module.exports.preBuild = async (req, res) => {
+  try {
+    res.status(200).send({response: 'done'}) 
+  } catch (error) {
+    console.log(error)
+    res.status(400).send({response: 'server_error', message: 'خطأ داخلي في الخادم، حاول مرة أخرى لاحقاً'}) 
   }
 }

@@ -30,8 +30,8 @@ var question = pool.define('question', {
 })
 
 
-question.hasMany(answer, { as: 'answers', foreignKey: 'questionId' });
-answer.belongsTo(question, { as: 'question', foreignKey: 'questionId' });
+// question.hasMany(answer, { as: 'answers', foreignKey: 'questionId' });
+// answer.belongsTo(question, { as: 'question', foreignKey: 'questionId' });
 
 question.sync().then(function() {
     console.log('DB connection successful.');

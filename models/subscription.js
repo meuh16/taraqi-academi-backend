@@ -36,7 +36,7 @@ var subscription = pool.define('subscription', {
 })
 
 
-student.hasMany(question, { as: 'subscription', foreignKey: 'studentId' });
+student.hasMany(subscription, { as: 'subscription', foreignKey: 'studentId' });
 subscription.belongsTo(student, { as: 'student', foreignKey: 'studentId' });
 
 subscription.sync().then(function() {

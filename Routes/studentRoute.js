@@ -29,5 +29,9 @@ studentRouter.post('/studentApi/programRegistration', studentMiddleware.CheckAut
 studentRouter.post('/studentApi/getSubscriptions', studentMiddleware.CheckAuth, studentController.getSubscriptions)
 studentRouter.post('/studentApi/getPaymentDetails', studentMiddleware.CheckAuth, studentController.getPaymentDetails)
 studentRouter.post('/studentApi/addSubscription', studentMiddleware.CheckAuth, studentController.addSubscription)
+studentRouter.post('/studentApi/getExams', studentMiddleware.CheckAuth, studentController.getExams)
+studentRouter.post('/studentApi/enterExam', studentMiddleware.CheckAuth, studentController.enterExam)
+studentRouter.post('/studentApi/getExam', studentMiddleware.CheckAuth, studentController.getExam)
+studentRouter.post('/studentApi/saveExam', studentMiddleware.CheckAuth, studentController.saveExam)
 
 module.exports = studentRouter;

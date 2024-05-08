@@ -105,9 +105,10 @@ student.belongsToMany(studyProgram, { through: studentStudyProgram });
 studyProgram.belongsToMany(student, { through: studentStudyProgram });
 
 student.belongsToMany(group, { through: StudentGroup });
-// group.hasMany(student, { through: StudentGroup });
+group.belongsToMany(student, { through: StudentGroup });
 
 student.belongsToMany(exam, { through: StudentExam });
+exam.belongsToMany(student, { through: StudentExam });
 // exam.belongsToMany(student, { through: studentExam });
 
 

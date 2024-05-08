@@ -8,8 +8,14 @@ var groupExam = pool.define('groupExam', {
         type: Sequelize.DataTypes.UUID,
         defaultValue: Sequelize.DataTypes.UUIDV4
     },
+    examId:{
+        type: Sequelize.DataTypes.UUID,
+    },
+    groupId:{
+        type: Sequelize.DataTypes.UUID,
+    },
     status:{
-        type: Sequelize.STRING,
+        type: Sequelize.STRING, 
     },
     note:{
         type: Sequelize.STRING,
@@ -17,8 +23,6 @@ var groupExam = pool.define('groupExam', {
     answers:{
         type: Sequelize.TEXT,
     },
-
-
 })
 
 groupExam.sync().then(function() {

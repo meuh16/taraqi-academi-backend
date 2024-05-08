@@ -1,5 +1,6 @@
 const pool = require('../config/database')
-const Sequelize = require('sequelize')
+const Sequelize = require('sequelize');
+const group = require('./Group');
 
 var studyProgram = pool.define('studyProgram', {
     // Here are the columns of the table
@@ -15,7 +16,7 @@ var studyProgram = pool.define('studyProgram', {
         type: Sequelize.TEXT,
     },
     age: {
-        type: Sequelize.INTEGER,
+        type: Sequelize.STRING,
     },
     duration: {
         type: Sequelize.STRING,
@@ -47,6 +48,9 @@ var studyProgram = pool.define('studyProgram', {
 
 studyProgram.sync().then(function() {
     console.log('DB connection successful.');
-}).catch(err=> {console.log('error has occured', err)});;
+}).catch(err=> {console.log('error has occured', err)});
+
+studyProgram.hasMany(group, { as: 'groups', foreignKey: 'studyProgramId' });
+// group.belongsTo(studyProgram, { as: 'program', foreignKey: 'studyProgramId' });
 
 module.exports = studyProgram;

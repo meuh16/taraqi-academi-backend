@@ -2,6 +2,7 @@ require('dotenv').config()
 const bodyparser = require('body-parser')
 const express = require('express');
 const studentRouter = require('./Routes/studentRoute');
+const adminRouter = require('./Routes/adminRoute');
 const cookieparser = require('cookie-parser')
 const helmet = require("helmet");
 const path = require('path');
@@ -58,4 +59,5 @@ app.use('/studentApi/pics', express.static(path.join(__dirname, 'images')));
 app.listen(5050, console.log('we are listening to port 5050'));
 
 
+app.use(adminRouter);
 app.use(studentRouter);
